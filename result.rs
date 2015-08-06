@@ -47,11 +47,12 @@ fn sort_vec(nums: &Vec<i32>) -> Vec<i32> {
     let mut numbers = nums.clone();
     let mut greater_than = vec![];
     let mut less_than = vec![];
-    let pivot = get_piv(numbers.pop());
 
-    if numbers.len() < 3 {
+    if numbers.len() < 2 {
         return numbers
     }
+
+    let pivot = get_piv(numbers.pop());
 
     {
         let gt = &mut greater_than;
@@ -59,10 +60,8 @@ fn sort_vec(nums: &Vec<i32>) -> Vec<i32> {
 
         for n in &numbers {
             if n > &pivot {
-                // println!("{} is greater than {}", n, &pivot);
                 gt.push(*n);
             } else {
-                // println!("{} is lesser than {}", n, &pivot);
                 lt.push(*n);
             }
         }
@@ -70,6 +69,7 @@ fn sort_vec(nums: &Vec<i32>) -> Vec<i32> {
 
     let mut lesser = sort_vec(&less_than);
     let mut greater = sort_vec(&greater_than);
+
     lesser.push(pivot);
 
     for n in greater {
@@ -92,16 +92,4 @@ fn main() {
     for n in lesser {
         println!("{}", n);
     }
-    // let even = even_numbers(random_numbers);
-    //
-    // for n in even {
-    //     println!("{}", n);
-    // }
-    //
-    // let random_numbers: Vec<i32> = vec![10, 100, 34, 23, 18, 22, 11, 85, 101];
-    // let string_numbers: Vec<String> = mutable_to_string(&random_numbers);
-    //
-    // for n in string_numbers {
-    //     println!("{}", n);
-    // }
 }
