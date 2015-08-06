@@ -43,51 +43,65 @@ fn mutable_to_string(numbers: &Vec<i32>) -> Vec<String> {
     strings
 }
 
-// fn get_pivot<'a>(pivot: &'a Option<i32>) -> i32 {
-//     match pivot {
-//         Some(x) => x,
-//         None => 0i32
-//     },
-// }
+fn sort_vec(nums: &Vec<i32>) -> Vec<i32> {
+    let mut numbers = nums.clone();
+    let mut greater_than = vec![];
+    let mut less_than = vec![];
+    let pivot = get_piv(numbers.pop());
 
-fn sort_vec<'a>(numbers: Vec<&'a i32>, pivot: &'a Option<i32>) -> Vec<&'a i32> {
-    if pivot.is_none() {
+    if numbers.len() < 3 {
         return numbers
     }
 
-    let p = pivot.expect("nothing");
+    {
+        let gt = &mut greater_than;
+        let lt = &mut less_than;
 
-    // below here, pivot should be
-
-    let mut gt: Vec<&i32> = vec![];
-    let mut lt: Vec<&i32> = vec![];
-
-    for num in numbers {
-        if num > &p {
-            gt.push(num);
-        } else {
-            lt.push(num);
+        for n in &numbers {
+            if n > &pivot {
+                // println!("{} is greater than {}", n, &pivot);
+                gt.push(*n);
+            } else {
+                // println!("{} is lesser than {}", n, &pivot);
+                lt.push(*n);
+            }
         }
     }
-    lt.push(&p);
-    for n in gt {
-        lt.push(n);
+
+    let mut lesser = sort_vec(&less_than);
+    let mut greater = sort_vec(&greater_than);
+    lesser.push(pivot);
+
+    for n in greater {
+        lesser.push(n);
     }
-    lt
+
+    lesser
+}
+
+fn get_piv<T>(n: Option<T>) -> T {
+    match n {
+        Some(x) => x,
+        None => panic!("NOOO!!!!!")
+    }
 }
 
 fn main() {
-    let random_numbers = vec![10, 100, 34, 23, 18, 22, 11, 85, 101];
-    let even = even_numbers(random_numbers);
-
-    for n in even {
+    let mut random_numbers = vec![10, 100, 34, 23, 18, 22, 11, 85, 29];
+    let lesser = sort_vec(&random_numbers);
+    for n in lesser {
         println!("{}", n);
     }
-
-    let random_numbers: Vec<i32> = vec![10, 100, 34, 23, 18, 22, 11, 85, 101];
-    let string_numbers: Vec<String> = mutable_to_string(&random_numbers);
-
-    for n in string_numbers {
-        println!("{}", n);
-    }
+    // let even = even_numbers(random_numbers);
+    //
+    // for n in even {
+    //     println!("{}", n);
+    // }
+    //
+    // let random_numbers: Vec<i32> = vec![10, 100, 34, 23, 18, 22, 11, 85, 101];
+    // let string_numbers: Vec<String> = mutable_to_string(&random_numbers);
+    //
+    // for n in string_numbers {
+    //     println!("{}", n);
+    // }
 }
