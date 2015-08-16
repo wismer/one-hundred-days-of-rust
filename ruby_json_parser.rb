@@ -26,9 +26,6 @@ class JSONParser
   def parse_object(nested_level = 1, object={})
     until nested_level == 0
       object[parse_key] = parse
-      # will continue to call parse_key and `parse` continuously until
-      # the data object pointer does not return a `,`, denoting the end of the object.
-
       until @data[@i] != ','
         @i += 1 # moves on to the next key in the object
         object[parse_key] = parse
@@ -74,29 +71,38 @@ class JSONParser
     return substring + @data[@i + 1]
   end
 
-  def parse_string(str='')
-    @i += 1
-    substring_present = false
+  def char_escaped?
+    @data[@i] == "\\"
+  end
 
-    until @data[@i] == '"'
-      if @data[@i] == "\\" && @data[@i + 1] == '"'
-        substring_present = true
+  def convert_escaped_character
+    case @data[@i]
+    when 'n' then "\n"
+    when 'a' then "\a"
+    when 'e' then "\e"
+    when 'r' then "\r"
+    when 's' then "\s"
+    when '"' then "\""
+    else
+      binding.pry
+    end
+  end
+
+  def parse_string(str='', substring=false)
+    @i += 1 if @data[@i] == "\""
+    loop do
+      char = @data[@i]
+      break if char == "\""
+
+      if char_escaped?
         @i += 1
-        str += @data[@i] + parse_substring
-        @i += 2
+        str += convert_escaped_character
+      else
+        str += char
       end
-      str += @data[@i]
       @i += 1
-      binding.pry if @current['name'] == 'Backstab'
     end
-
-    if !json_boundary?
-
-      @i += 1
-      str += parse_substring
-    end
-
-    @i += 1 # skip ending quotation
+    @i += 1 if @data[@i] == "\""
     return str
   end
 
@@ -118,34 +124,23 @@ class JSONParser
 
   def parse(container = nil)
     if @data[@i] == '{'
-      puts 'object'
       parse_object
     elsif @data[@i] == '"'
-      puts 'string'
       parse_string
     elsif ('0'..'9').include?(@data[@i])
-      puts 'number'
       parse_number
     elsif @data[@i] == '['
-      puts 'array'
       parse_array
     elsif @data[@i] == 'n'
-      puts 'null'
       return i + 4, nil
     elsif @data[@i] == 'f' || @data[@i] == 't'
-      puts 'boolean'
       _, bool = parse_boolean
       return bool
-    elsif container.is_a?(Hash)
-
-    elsif container.is_a?(Array)
-    else
-      binding.pry
     end
   end
 end
 
 parser = JSONParser.new
-parser.parse
+json = parser.parse
 # key = parser
 binding.pry
