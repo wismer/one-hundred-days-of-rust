@@ -1,15 +1,8 @@
-require 'pry'
-require 'json'
-class JSONParser
-  attr_reader :json
 
+class JSONParser
   def initialize
     @data = File.read("/Users/Matt/projects/ruby/hearthstone/public/data/AllSets.json").chars
-    @accurate_json = JSON.load(@data.join)
     @i = 0
-    @string_dividers = [']', '}', ',']
-    @json = {}
-    @current = {}
   end
 
   def parse_key(key='')
@@ -29,7 +22,6 @@ class JSONParser
       until @data[@i] != ','
         @i += 1 # moves on to the next key in the object
         object[parse_key] = parse
-        @current = object
       end
 
       if @data[@i] == '}'
@@ -58,19 +50,6 @@ class JSONParser
     array
   end
 
-  def json_boundary?
-    @string_dividers.include?(@data[@i + 1])
-  end
-
-  def parse_substring(substring='')
-    until @data[@i] == "\\"
-      substring += @data[@i]
-      @i += 1
-    end
-
-    return substring + @data[@i + 1]
-  end
-
   def char_escaped?
     @data[@i] == "\\"
   end
@@ -84,7 +63,7 @@ class JSONParser
     when 's' then "\s"
     when '"' then "\""
     else
-      binding.pry
+      @data[@i]
     end
   end
 
@@ -104,10 +83,6 @@ class JSONParser
     end
     @i += 1 if @data[@i] == "\""
     return str
-  end
-
-  def print_chunk
-    @data[@i - 100..@i + 100].join
   end
 
   def parse_number(n='')
@@ -142,5 +117,3 @@ end
 
 parser = JSONParser.new
 json = parser.parse
-# key = parser
-binding.pry
