@@ -16,16 +16,33 @@ use std::collections::HashMap;
 //      }
 // }
 
-
+#[derive(Debug)]
 enum Parser<T> {
-    Object { iter: Vec<char>, hash: HashMap<String, T> },
-    Array { iter: Vec<char>, array: Vec<T> },
-    Str,
-    Int,
-    Bool,
-    None
+    Object { iter: Vec<char>, hash: HashMap<String, T>, i: usize },
+    Array { iter: Vec<char>, array: Vec<T>, i: usize },
+    Str(Vec<char>, usize),
+    Int(Vec<char>, usize),
+    Bool(Vec<char>, usize),
+    Null(Vec<char>, usize)
 }
 
+
+impl<JSON> Parser<JSON> {
+    fn what_do_i_do_now_question_mark(self) {
+
+        let result = match self {
+            Parser::Object { iter, hash, i } => parse_object(&mut iter, &mut i),
+            Parser::Array { iter, array, i } => parse_array(&mut iter.iter(), &mut i),
+            Parser::Str(iter, i) => parse_string(&mut iter.iter(), &mut i),
+            Parser::Int(iter, i) => parse_number(&mut iter.iter(), &mut i),
+            Parser::Bool(iter, i) => parse_bool(&mut iter.iter(), &mut i),
+            Parser::Null(iter, i) => parse_null(&mut iter.iter(), &mut i)
+        };
+        {}
+    }
+}
+
+#[derive(Debug)]
 enum JSON {
     Obj,
     Arr,
@@ -125,13 +142,14 @@ fn parse<T>(iter: &mut Iterator<Item=char>, i: &mut usize) {
         let letter = c.unwrap();
         let letters = iter.collect();
         let parser_obj = match letter {
-            '{'  => Parser::Object::<T> { iter: letters, hash: HashMap::new() },
-            '['  => Parser::Array::<T> { iter: letters, array: vec![] },
-            '\"' => Parser::Str,
-            'n'  => Parser::None,
-            't' | 'f' => Parser::Bool,
-             _   => Parser::Int
+            '{'  => Parser::Object::<T> { iter: letters, hash: HashMap::new(), i: *i },
+            '['  => Parser::Array::<T> { iter: letters, array: vec![], i: *i },
+            '\"' => Parser::Str(letters, *i),
+            'n'  => Parser::Null(letters, *i),
+            't' | 'f' => Parser::Bool(letters, *i),
+             _   => Parser::Int(letters, *i)
         };
+        parser_obj.what_do_i_do_now_question_mark();
     }
 }
 
@@ -155,7 +173,7 @@ fn parse_key(iter: &mut Iterator<Item=char>, i: &mut usize) -> String {
     key
 }
 
-fn parse_object<T>(iter: &mut Iterator<Item=char>, i: &mut usize) -> HashMap<String, T>{
+fn parse_object<T>(iter: &mut Vec<char>, i: &mut usize) -> HashMap<String, T>{
     let mut hash = HashMap::new();
     // let mut nested_level = 1;
     // while nested_level != 0 {
@@ -174,10 +192,8 @@ fn main() {
     let mut file = File::open(json_file).unwrap();
     let mut buffer = String::new();
     file.read_to_string(&mut buffer);
-    let mut z = buffer.chars();
-    let mut c = z.next().unwrap();
-    let escape = 'n';
-    let n = convert_escaped_character(&escape);
-    let mut num: usize = 10;
-    parse::<JSON>(&mut z, &mut num);
+    let mut z = buffer.as_bytes();
+    let mut i = 0;
+    parse::<JSON>(&mut z.iter(), &mut i);
+    // the possible types are `JSON`
 }
