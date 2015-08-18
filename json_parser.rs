@@ -26,6 +26,15 @@ enum Parser<T> {
     None
 }
 
+enum JSON {
+    Obj,
+    Arr,
+    Str,
+    Int,
+    Bool,
+    None
+}
+
 fn convert_escaped_character(c: &char) -> char {
     match *c {
         'n'  => '\n',
@@ -51,7 +60,7 @@ fn parse_number(chunk: &mut Iterator<Item=char>) -> usize {
 }
 
 fn parse_string(iter: &mut Iterator<Item=char>, i: &mut usize) -> String {
-    let mut string_chunk = "".to_string();
+    let mut string_chunk = String::new();
     loop {
         let chunk = &mut string_chunk;
         let c = iter.next();
@@ -108,7 +117,7 @@ fn parse_array<T>(iter: &mut Iterator<Item=char>, i: &mut usize) -> Vec<T> {
     array
 }
 //  brett victor
-fn parse(iter: &mut Iterator<Item=char>, i: &mut usize) {
+fn parse<T>(iter: &mut Iterator<Item=char>, i: &mut usize) {
     let c = iter.next();
     if c.is_none() {
         return;
@@ -116,8 +125,8 @@ fn parse(iter: &mut Iterator<Item=char>, i: &mut usize) {
         let letter = c.unwrap();
         let letters = iter.collect();
         let parser_obj = match letter {
-            '{'  => Parser::Object::<String> { iter: letters, hash: HashMap::new() },
-            '['  => Parser::Array::<String> { iter: letters, array: vec![] },
+            '{'  => Parser::Object::<T> { iter: letters, hash: HashMap::new() },
+            '['  => Parser::Array::<T> { iter: letters, array: vec![] },
             '\"' => Parser::Str,
             'n'  => Parser::None,
             't' | 'f' => Parser::Bool,
@@ -170,4 +179,5 @@ fn main() {
     let escape = 'n';
     let n = convert_escaped_character(&escape);
     let mut num: usize = 10;
+    parse::<JSON>(&mut z, &mut num);
 }
