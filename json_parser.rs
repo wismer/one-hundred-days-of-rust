@@ -1,169 +1,208 @@
-use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::fs::File;
+use std::str;
+use std::char;
 use std::collections::HashMap;
+use std::fmt::Debug;
 
-// match letter {
-//     '{'  => parse_object::<String>(iter, i),
-//     '\"' => parse_string(iter, i),
-//     '['  => parse_array::<String>(iter, i),
-//     'n'  => parse_null(iter, i),
-//     't' | 'f' => parse_bool(iter, i),
-//      _ => if letter.is_numeric(8) {
-//          parse_number(iter, i)
-//      } else {
-//          // something?
-//      }
-// }
-
-#[derive(Debug)]
-enum Parser<T> {
-    Object { iter: Vec<char>, hash: HashMap<String, T>, i: usize },
-    Array { iter: Vec<char>, array: Vec<T>, i: usize },
-    Str(Vec<char>, usize),
-    Int(Vec<char>, usize),
-    Bool(Vec<char>, usize),
-    Null(Vec<char>, usize)
-}
-
-
-impl<JSON> Parser<JSON> {
-    fn what_do_i_do_now_question_mark(self) {
-
-        let result = match self {
-            Parser::Object { iter, hash, i } => parse_object(&mut iter, &mut i),
-            Parser::Array { iter, array, i } => parse_array(&mut iter.iter(), &mut i),
-            Parser::Str(iter, i) => parse_string(&mut iter.iter(), &mut i),
-            Parser::Int(iter, i) => parse_number(&mut iter.iter(), &mut i),
-            Parser::Bool(iter, i) => parse_bool(&mut iter.iter(), &mut i),
-            Parser::Null(iter, i) => parse_null(&mut iter.iter(), &mut i)
-        };
-        {}
-    }
-}
+struct Null;
+struct Object;
 
 #[derive(Debug)]
 enum JSON {
-    Obj,
-    Arr,
-    Str,
-    Int,
-    Bool,
+    Obj { container: HashMap<String, JSON> },
+    Arr { container: Vec<JSON> },
+    Str(String),
+    Int(i32),
+    Bool(bool),
     None
 }
 
-fn convert_escaped_character(c: &char) -> char {
-    match *c {
+impl JSON {
+    fn len(&self) -> usize {
+        match *self {
+            JSON::Obj { ref container } => container.keys().len(),
+            JSON::Arr { ref container } => container.len(),
+            _ => panic!("what!?")
+        }
+    }
+
+    fn get(&self, key: &str) -> &'static str {
+        let json: &HashMap<String, JSON> = match *self {
+            JSON::Obj { ref container } => container,
+            _ => panic!("SDFKLSDJFLSKDJFSLDKFJ")
+        };
+
+        match *json.get(&key.to_string()).unwrap() {
+            JSON::Str(ref x) => x,
+            _ => panic!("omg")
+        }
+    }
+
+    fn list(&self) -> Vec<String> {
+        match *self {
+            JSON::Arr { ref container } => container.iter().map(|&x| x.get("name") ).collect(),
+            _ => panic!("sdfksd")
+        }
+    }
+}
+
+fn convert_escaped_character(buffer: &mut Iterator<Item=char>) -> char {
+    let c = buffer.next().unwrap();
+    match c {
         'n'  => '\n',
         'r'  => '\r',
         '"'  => '\"',
-         _   => *c
+         _   => c
     }
 }
 
-fn parse_bool(c: &char, i: &mut usize) -> bool {
-    if *c == 't' {
-        *i += 4;
-        true
-    } else {
-        *i += 5;
-        false
-    }
-}
-
-fn parse_number(chunk: &mut Iterator<Item=char>) -> usize {
-    let stringified: String = chunk.take_while(|&x| x.is_digit(8) ).collect();
-    stringified.parse::<usize>().unwrap()
-}
-
-fn parse_string(iter: &mut Iterator<Item=char>, i: &mut usize) -> String {
-    let mut string_chunk = String::new();
+fn parse_string(buffer: &mut Iterator<Item=char>) -> String {
+    let mut str_obj = String::new();
     loop {
-        let chunk = &mut string_chunk;
-        let c = iter.next();
-        if c.is_none() {
-            break;
-        }
-        let unwrapped = c.unwrap();
-
-        if unwrapped == '\"' {
+        let mut c = buffer.next().unwrap();
+        println!("string what are you {}", c);
+        if c == '\"' {
             break;
         }
 
-
-        if unwrapped == '\\' {
-            *i += 1;
-            chunk.push(convert_escaped_character(&unwrapped));
+        if c == '\\' {
+            let next_char = convert_escaped_character(buffer);
+            str_obj.push(next_char);
+            println!("escaped character: {}", next_char);
         } else {
-            chunk.push(unwrapped);
+            str_obj.push(c);
         }
-
-        *i += 1;
     }
 
-    if iter.next().unwrap() == '\"' {
-        *i += 1;
+    println!("this is a string value: {}", str_obj);
+
+    str_obj
+}
+
+fn parse_null(buffer: &mut Iterator<Item=char>, c: char) -> JSON {
+    let mut limit = 0;
+    while limit != 4 {
+        buffer.next();
+        limit += 1;
+    }
+    JSON::None
+}
+
+fn parse_int(buffer: &mut Iterator<Item=char>, first: char) -> i32 {
+    let mut num = String::new();
+    num.push(first);
+    for digit in buffer.take_while(|&x| x.is_numeric() ) {
+        num.push(digit);
     }
 
-    string_chunk.to_string()
+
+    let skipped = buffer.next().unwrap();
+    if skipped == ',' {
+        buffer.next().unwrap();
+    }
+
+    let n: Result<i32, _> = num.parse::<i32>();
+    n.unwrap()
 }
 
-fn parse_array<T>(iter: &mut Iterator<Item=char>, i: &mut usize) -> Vec<T> {
-    let mut array: Vec<T> = vec![];
-    // let mut nested_level = 1;
-    // loop {
-    //     let c = iter.next().unwrap();
-    //     if c == ']' {
-    //         nested_level -= 1;
-    //         if nested_level == 0 {
-    //             break;
-    //         }
-    //     } else {
-    //         let parsed_object = parse(iter, i);
-    //         array.push(parsed_object);
-    //         let mut peekable_iter = iter.cloned().peekable();
-    //         if *peekable_iter.peek().unwrap() == ',' {
-    //             *i += 2;
-    //         } else {
-    //             *i += 1;
-    //         }
-    //     }
-    // }
-    //
-    // *i += 1;
-    array
+fn parse_bool(buffer: &mut Iterator<Item=char>, b: bool) -> bool {
+
+
+    let mut limit: usize = match b {
+        true => 3,
+        false => 4
+    };
+
+    while limit != 0 {
+        let n = buffer.next().unwrap();
+        limit -= 1;
+    }
+
+    b
 }
-//  brett victor
-fn parse<T>(iter: &mut Iterator<Item=char>, i: &mut usize) {
-    let c = iter.next();
-    if c.is_none() {
-        return;
+
+fn parse_object(buffer: &mut Iterator<Item=char>) -> HashMap<String, JSON> {
+    let mut hash: HashMap<String, JSON> = HashMap::new();
+    let z = buffer.next();
+    println!("obj");
+    loop {
+        let c = buffer.next().unwrap();
+
+        if c == '}' {
+            break;
+        } else if c == ',' {
+            // println!("comma");
+        } else {
+            println!("right before the key {}", c);
+            let key = parse_key(buffer, c);
+            println!("key: {}", key);
+            let skipped = buffer.next().unwrap(); // skip colon
+            if skipped != ':' {
+                println!("{}", skipped);
+                panic!("NOT");
+            }
+            let next_char = buffer.next().unwrap();
+            println!("before value gets inserted {}", next_char);
+            let mut json_obj = get_next_chunk(buffer, next_char);
+            hash.insert(key, json_obj);
+        }
+    }
+    hash
+}
+
+fn get_next_chunk(buffer: &mut Iterator<Item=char>, c: char) -> JSON {
+    let mut next_char: char;
+
+    if c == ',' {
+        next_char = buffer.next().unwrap();
     } else {
-        let letter = c.unwrap();
-        let letters = iter.collect();
-        let parser_obj = match letter {
-            '{'  => Parser::Object::<T> { iter: letters, hash: HashMap::new(), i: *i },
-            '['  => Parser::Array::<T> { iter: letters, array: vec![], i: *i },
-            '\"' => Parser::Str(letters, *i),
-            'n'  => Parser::Null(letters, *i),
-            't' | 'f' => Parser::Bool(letters, *i),
-             _   => Parser::Int(letters, *i)
-        };
-        parser_obj.what_do_i_do_now_question_mark();
+        next_char = c;
+    }
+    println!("get next chunk: {}", next_char);
+
+    match next_char {
+        '{'  => JSON::Obj { container: parse_object(buffer) },
+        '\"' => JSON::Str(parse_string(buffer)),
+        '['  => JSON::Arr { container: parse_array(buffer) },
+        '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => JSON::Int(parse_int(buffer, c)),
+        'f' => JSON::Bool(parse_bool(buffer, false)),
+        't' => JSON::Bool(parse_bool(buffer, true)),
+         _ => parse_null(buffer, c)
     }
 }
 
-fn fast_forward(iter: &mut Iterator<Item=char>, i: &mut usize) {
-    iter.take_while( |&x| x != '\"' );
-    {}
-}
+fn parse_array(buffer: &mut Iterator<Item=char>) -> Vec<JSON> {
+    let mut arr: Vec<JSON> = vec![];
+    let mut json_obj: JSON;
 
-fn parse_key(iter: &mut Iterator<Item=char>, i: &mut usize) -> String {
-    let mut key = String::new();
-    fast_forward(iter, i);
 
     loop {
-        let c = iter.next().unwrap();
+        let mut c = buffer.next().unwrap();
+        if c == ']' {
+            println!("array loop broken");
+            break;
+        } else if c == ',' {
+            println!("comma skipped");
+        } else {
+            json_obj = get_next_chunk(buffer, c);
+            println!("pushed into array: {}", c);
+            arr.push(json_obj);
+        }
+    }
+
+    arr
+}
+
+fn parse_key(buffer: &mut Iterator<Item=char>, first: char) -> String {
+    let mut key: String = String::new();
+    if first != '\"' {
+        key.push(first);
+    }
+
+    loop {
+        let c = buffer.next().unwrap();
         if c == '\"' {
             break;
         }
@@ -173,27 +212,20 @@ fn parse_key(iter: &mut Iterator<Item=char>, i: &mut usize) -> String {
     key
 }
 
-fn parse_object<T>(iter: &mut Vec<char>, i: &mut usize) -> HashMap<String, T>{
-    let mut hash = HashMap::new();
-    // let mut nested_level = 1;
-    // while nested_level != 0 {
-    //
-    // }
-    hash
-}
-
-fn parse_null(iter: &mut Iterator<Item=char>, i: &mut usize) -> String {
-    *i += 4;
-    "null".to_string()
-}
-
 fn main() {
     let json_file = Path::new("/Users/Matt/projects/ruby/hearthstone/public/data/AllSets.json");
     let mut file = File::open(json_file).unwrap();
     let mut buffer = String::new();
-    file.read_to_string(&mut buffer);
-    let mut z = buffer.as_bytes();
-    let mut i = 0;
-    parse::<JSON>(&mut z.iter(), &mut i);
-    // the possible types are `JSON`
+    let result = file.read_to_string(&mut buffer);
+    let mut data = buffer.chars();
+    let mut hash: HashMap<String, JSON> = parse_object(&mut data);
+    // let mut json = JSON::Obj { container: parse_object(&mut data) };
+    let mut total = 0;
+    // for (k, h) in hash {
+    //     println!("key: {} and length: {}", k, h.len());
+    //     total += h.len();
+    // }
+
+    let results = hash.get("Blackrock Mountain").unwrap().list();
+
 }
