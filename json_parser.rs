@@ -6,8 +6,11 @@ use std::char;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-struct Null;
-struct Object;
+struct Parser {
+    buffer: String,
+    depth: usize,
+    json: JSON
+}
 
 #[derive(Debug)]
 enum JSON {
@@ -17,6 +20,33 @@ enum JSON {
     Int(i32),
     Bool(bool),
     None
+}
+
+impl Parser {
+    fn new(buffer: String, json: JSON) -> Parser {
+        Parser { buffer: buffer, depth: 0, json: json }
+    }
+
+    fn parse(&mut self, json: &mut JSON) -> JSON {
+        let mut buffer = self.buffer.chars();
+
+        loop {
+            if c.is_none() {
+                break;
+            }
+            self.parse_json(json, buffer, c)
+        }
+
+        json
+    }
+
+    fn parse_json(&mut self, &mut Iterator<Item=char>, json: &mut JSON, c: Option<char>) {
+        let piece = c.unwrap();
+
+        match piece {
+            '{' =>
+        }
+    }
 }
 
 impl JSON {
@@ -29,15 +59,7 @@ impl JSON {
     }
 
     fn get(&self, key: &str) -> &'static str {
-        let json: &HashMap<String, JSON> = match *self {
-            JSON::Obj { ref container } => container,
-            _ => panic!("SDFKLSDJFLSKDJFSLDKFJ")
-        };
 
-        match *json.get(&key.to_string()).unwrap() {
-            JSON::Str(ref x) => x,
-            _ => panic!("omg")
-        }
     }
 
     fn list(&self) -> Vec<String> {
@@ -215,17 +237,21 @@ fn parse_key(buffer: &mut Iterator<Item=char>, first: char) -> String {
 fn main() {
     let json_file = Path::new("/Users/Matt/projects/ruby/hearthstone/public/data/AllSets.json");
     let mut file = File::open(json_file).unwrap();
-    let mut buffer = String::new();
-    let result = file.read_to_string(&mut buffer);
-    let mut data = buffer.chars();
-    let mut hash: HashMap<String, JSON> = parse_object(&mut data);
-    // let mut json = JSON::Obj { container: parse_object(&mut data) };
-    let mut total = 0;
-    // for (k, h) in hash {
-    //     println!("key: {} and length: {}", k, h.len());
-    //     total += h.len();
-    // }
+    let mut data = String::new();
+    // load the json data into `data`
+    file.read_to_string(&mut data);
+    // instantiate the parser
+    let parser = Parser::new(json);
+    
+    let mut buffer = data.chars();
 
-    let results = hash.get("Blackrock Mountain").unwrap().list();
+    loop {
+        let c = buffer.next();
 
+        if c.is_none() {
+            break;
+        }
+
+        parser.parse(c);
+    }
 }
