@@ -25,14 +25,14 @@ impl Parser {
     fn new() -> Parser { Parser }
 
     fn load(&self, buffer: &mut Iterator<Item=char>) -> JSON {
-        // get next character in buffer
-        let c = buffer.next();
         // start parsing
-        let mut json: JSON = JSON(self.parse(buffer, c.unwrap()));
+        let mut json: JSON = JSON(self.parse(buffer));
         json
     }
 
-    fn parse(&self, buffer: &mut Iterator<Item=char>, c: char) -> JSONTypes {
+    fn parse(&self, buffer: &mut Iterator<Item=char>) -> JSONTypes {
+        let mut c = buffer.next().unwrap();
+        // println!("{}", c);
         match c {
             '{'  => self.parse_object(buffer),
             '\"' => self.parse_string(buffer),
@@ -45,9 +45,7 @@ impl Parser {
     }
 
     fn parse_string(&self, buffer: &mut Iterator<Item=char>) -> JSONTypes {
-        buffer.next(); // pop off "
         let mut container = String::new();
-        container.push(c);
         loop {
             let next_char = buffer.next().unwrap();
             if next_char == '\"' {
@@ -60,13 +58,13 @@ impl Parser {
                     'n'  => container.push('\n'),
                     'r'  => container.push('\r'),
                     '"'  => container.push('\"'),
-                     _   => container.push(c)
+                     _   => container.push(escape)
                 }
             } else {
                 container.push(next_char);
             }
         }
-        let following = buffer.next().unwrap();
+
         JSONTypes::Str(container)
     }
 
@@ -75,15 +73,17 @@ impl Parser {
         num.push(first);
 
         for digit in buffer.take_while( |&x| x.is_numeric() ) {
+            // println!("digit: {}, first: {}", digit, first);
             num.push(digit);
         }
 
         let n: Result<i32, _> = num.parse::<i32>();
         let int = n.unwrap();
+        // println!("digit: {}", int);
         JSONTypes::Int(int)
     }
 
-    fn parse_null(&self, buffer: &mut Iterator<Item=char>, c: char) -> JSONTypes {
+    fn parse_null(&self, buffer: &mut Iterator<Item=char>) -> JSONTypes {
         let mut limit = 0;
         while limit != 4 {
             buffer.next();
@@ -109,60 +109,46 @@ impl Parser {
 
     fn parse_array(&self, buffer: &mut Iterator<Item=char>) -> JSONTypes {
         let mut array: Vec<JSONTypes> = vec![];
-        buffer.next(); // pop off open bracket
+        let mut next_char = buffer.next().unwrap();
+        if next_char == ',' {
+            next_char = buffer.next().unwrap();
+        }
 
         loop {
+            println!("char for array {}", next_char);
             if next_char == ']' {
                 break;
             } else {
-                let value = self.parse(buffer, next_char);
-                array.push(value);
-                let value = self.parse(buffer, c);
+                let value = self.parse(buffer);
                 array.push(value);
             }
         }
-
         JSONTypes::Arr { container: array }
     }
 
-    fn parse_object(&self, buffer: &mut Iterator<Item=char>, c: char) -> JSONTypes {
+    fn parse_object(&self, buffer: &mut Iterator<Item=char>) -> JSONTypes {
         let mut jsobject: HashMap<String, JSONTypes> = HashMap::new();
+        buffer.next();
         loop {
-            println!("c: {}", c);
             let key = buffer.take_while( |&x| x != '\"' ).collect();
-            let end_quote = buffer.next(); // end quote
-            println!("end quote {}", end_quote.unwrap());
-            let next_char = buffer.next().unwrap();
-            println!("key: {}, following: {}", key, next_char);
-
-            let value: JSONTypes = self.parse(buffer, next_char);
+            let a = buffer.next();
+            // println!("key {}, a {}", key, a.unwrap());
+            let value: JSONTypes = self.parse(buffer);
             jsobject.insert(key, value);
+            let mut end_point = buffer.next().unwrap();
 
-            let end_point = buffer.next().unwrap();
-            println!("end: {}", end_point);
+            if end_point == ',' {
+                end_point = buffer.next().unwrap();
+            }
+
             if end_point == '}' {
+                // println!("END OBJECT");
                 break;
             }
         }
 
         JSONTypes::Obj { container: jsobject }
     }
-    //
-    // fn parse(&mut self, buffer: &mut Iterator<Item=char>, c: char) -> JSON {
-    //     match c {
-    //         '{'  => self.parse_object(buffer, next_char),
-    //         '\"' => self.parse_string(buffer, next_char),
-    //         '['  => self.parse_array(buffer, next_char),
-    //         '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => self.parse_int(buffer, next_char),
-    //         'f'  => self.parse_bool(buffer, false),
-    //         't'  => self.parse_bool(buffer, true),
-    //          _   => self.parse_null(buffer, next_char)
-    //     }
-    // }
-    //
-    // fn parse_object(&mut self) {
-    //
-    // }
 }
 //
 // fn convert_escaped_character(buffer: &mut Iterator<Item=char>) -> char {
