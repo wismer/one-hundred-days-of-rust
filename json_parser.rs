@@ -1,8 +1,6 @@
 use std::io::Read;
 use std::path::Path;
 use std::fs::File;
-use std::str;
-use std::char;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
@@ -13,6 +11,7 @@ struct JSON {
 }
 // this will help disseminate the various types expected in JSON
 
+#[derive(Debug)]
 enum JSONTypes {
     Obj { container: HashMap<String, JSONTypes> },
     Arr { container: Vec<JSONTypes> },
@@ -20,8 +19,7 @@ enum JSONTypes {
     Int(i32),
     Bool(bool),
     Null,
-    NaN,
-    None
+    NaN
 }
 
 impl JSON {
@@ -30,7 +28,7 @@ impl JSON {
     }
 
     fn load(&mut self, data: &mut String) {
-        let mut buffer: Vec<char> = data.chars().collect();
+        let buffer: Vec<char> = data.chars().collect();
         let buffer_length = buffer.len();
         while (self.index + 1) < buffer_length {
             self.index += 1;
@@ -59,7 +57,7 @@ impl JSON {
 
         JSONTypes::Obj { container: json_obj }
     }
-    // {"Basic":[{"id":"some_id","name":""}]}
+
     fn parse_key(&mut self, buffer: &Vec<char>) -> String {
         self.index += 1;
         let mut c = buffer.get(self.index).unwrap();
@@ -82,9 +80,7 @@ impl JSON {
     }
 
     fn parse_value(&mut self, buffer: &Vec<char>) -> JSONTypes {
-        let mut c = buffer.get(self.index).unwrap();
-        let mut json_type: JSONTypes;
-        println!("{}", c);
+        let c = buffer.get(self.index).unwrap();
         match *c {
             '{'  => self.parse_object(buffer),
             '\"' => self.parse_string(buffer),
@@ -130,8 +126,6 @@ impl JSON {
 
             c = buffer.get(self.index).unwrap();
         }
-        let next_character = buffer.get(self.index).unwrap();
-        println!("string: {}, next character: {}", string, next_character);
         JSONTypes::Str(string)
     }
 
@@ -141,7 +135,6 @@ impl JSON {
 
         loop {
             let c = buffer.get(self.index).unwrap();
-            println!("array step: {} on index: {}", c, self.index);
             if *c == ']' {
                 self.index += 1;
                 break;
@@ -197,6 +190,17 @@ impl JSON {
             panic!("Number parser failed on {}", container)
         }
     }
+
+    // ACCESSOR METHODS AFTER LOAD
+
+    fn keys(&self) -> Vec<&str> {
+        let mut keys: Vec<&str> = vec![];
+        for key in self.json.keys() {
+            keys.push(key);
+        }
+
+        keys
+    }
 }
 
 fn main() {
@@ -204,9 +208,14 @@ fn main() {
     let mut file = File::open(json_file).unwrap();
     let mut data = String::new();
     // load the json data into `data`
-    file.read_to_string(&mut data);
+    file.read_to_string(&mut data).unwrap();
     // instantiate the parser
     let mut json: JSON = JSON::new(HashMap::new(), 0, false);
     json.load(&mut data);
+
+    for key in json.keys() {
+        println!("key: {}", key);
+    }
+
     // load buffer into parser
 }
