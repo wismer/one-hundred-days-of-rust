@@ -63,6 +63,29 @@ enum JSONTypes {
 //     }
 // }
 
+impl JSONTypes {
+    fn show(&self) {
+        match *self {
+            JSONTypes::Obj { ref container } => {
+                for (k, v) in container {
+                    println!("key: {}", k);
+                    &v.show();
+                }
+            },
+            JSONTypes::Arr { ref container } => {
+                for card in container {
+                    &card.show();
+                }
+            },
+            JSONTypes::Int(val) => println!("int val: {}", val),
+            JSONTypes::Bool(v) => println!("boolean: {}", v),
+            JSONTypes::Null => println!("NULL"),
+            JSONTypes::NaN => println!("NaN"),
+            JSONTypes::Str(ref s) => println!("STRING: {}", s)
+        }
+    }
+}
+
 impl JSON {
     fn new(json: HashMap<String, JSONTypes>, index: usize, nan: bool) -> JSON {
         JSON { json: json, index: index, include_nan: nan }
@@ -100,7 +123,10 @@ impl JSON {
     }
 
     fn parse_key(&mut self, buffer: &Vec<char>) -> String {
-        self.index += 1;
+        if *buffer.get(self.index).unwrap() == '\"' {
+            self.index += 1;
+        }
+
         let mut c = buffer.get(self.index).unwrap();
         let mut key = String::new();
         while *c != '\"' {
@@ -116,7 +142,6 @@ impl JSON {
         } else {
             self.index += 2;
         }
-
         key
     }
 
@@ -242,6 +267,11 @@ impl JSON {
 
         keys
     }
+
+    fn get_cards_from(&self, card_set: &str) {
+        let card_container = self.json.get(card_set).unwrap();
+        card_container.show()
+    }
 }
 
 fn main() {
@@ -254,6 +284,8 @@ fn main() {
     let mut json: JSON = JSON::new(HashMap::new(), 0, false);
     // parse the data
     json.load(&mut data);
+
+    // let cards = json.get_cards_from("Basic");
     // print the data
     // json.pretty_print();
 
