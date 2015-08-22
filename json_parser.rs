@@ -2,7 +2,7 @@ use std::io::Read;
 use std::path::Path;
 use std::fs::File;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt;
 
 struct JSON {
     json: HashMap<String, JSONTypes>,
@@ -21,6 +21,47 @@ enum JSONTypes {
     Null,
     NaN
 }
+
+// impl JSONTypes {
+//     fn pretty_print(&self, level: &mut usize) -> &'static str {
+//         *level += 1;
+//         match *self {
+//             JSONTypes::Obj { ref container } => self.pp_obj(container, level),
+//             JSONTypes::Arr { ref container } => self.pp_arr(container, level),
+//             JSONTypes::Str(ref container)    => container.as_str(),
+//             JSONTypes::Int(ref container)    => container.to_string().as_str(),
+//             JSONTypes::Bool(ref f)           => {
+//                 if f { "true" } else { "false" }
+//             },
+//             JSONTypes::Null => "Null",
+//             JSONTypes::NaN => "NaN"
+//         }
+//     }
+//
+//     fn pp_obj(&self, obj: &HashMap<String, JSONTypes>, level: &mut usize) -> &'static str {
+//         *level += 1;
+//         let mut displayed_object = String::new();
+//         for (k,v) in obj {
+//             let key = fmt::format(format_args!("key: {}", k)).as_str();
+//             let value_obj = v.pretty_print(level);
+//             let value_string = fmt::format(format_args!(" value: {}", value_obj));
+//             let formatted = fmt::format(format_args!("\n key: {}, value: {}", key, value_string));
+//             displayed_object.push_str(&formatted);
+//         }
+//
+//         displayed_object.as_str()
+//     }
+//
+//     fn pp_arr(&self, arr: &Vec<JSONTypes>, level: &mut usize) -> &'static str {
+//         let mut string_array = String::new();
+//         for item in arr {
+//             let string_value = item.pretty_print(level);
+//             string_array.push_str(string_value);
+//         }
+//
+//         string_array.as_str()
+//     }
+// }
 
 impl JSON {
     fn new(json: HashMap<String, JSONTypes>, index: usize, nan: bool) -> JSON {
@@ -211,11 +252,9 @@ fn main() {
     file.read_to_string(&mut data).unwrap();
     // instantiate the parser
     let mut json: JSON = JSON::new(HashMap::new(), 0, false);
+    // parse the data
     json.load(&mut data);
+    // print the data
+    // json.pretty_print();
 
-    for key in json.keys() {
-        println!("key: {}", key);
-    }
-
-    // load buffer into parser
 }
